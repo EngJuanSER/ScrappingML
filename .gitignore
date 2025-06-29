@@ -1,0 +1,9 @@
+# Ignorar archivos de entorno y otros archivos sensibles
+infra/.env
+infra/.env.example
+__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+.DS_Store
