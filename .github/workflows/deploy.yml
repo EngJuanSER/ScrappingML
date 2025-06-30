@@ -38,7 +38,7 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "juanmanuels-scrappingml-32"
-          entrypoint: "backend"
+          entrypoint: ""
           root: "backend"
           
           
