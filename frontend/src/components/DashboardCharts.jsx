@@ -5,7 +5,6 @@ import PieChart from "./PieChart.jsx";
 import ScatterChart from "./ScatterChart.jsx";
 import CategoryFilter from "./CategoryFilter.jsx";
 import MultiLineChart from "./MultiLineChart.jsx";
-import WordCloudComponent from "./WordCloud.jsx";
 
 const formatoCOP = valor => valor.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
@@ -61,65 +60,6 @@ function getBarChartData(data, categoria) {
   });
   if (barData.every(v => v === null)) return { barLabels: [], barData: [] };
   return { barLabels, barData };
-}
-
-function getWordCloudData(data, tipo = "positiva") {
-  const isPositiva = tipo === "positiva";
-  const ratingRegex = /Calificación (\d+) de 5/;
-
-  // Palabras a excluir (puedes agregar más)
-  const stopwords = [
-    "celular", "tecnologia", "muebles","para", "pero", "este", "esta", "con", "sin", "muy", "más", "menos", "tiene", "buenas", "buenos",
-    "producto", "productos", "herramienta", "herramientas", "calidad", "precio", "cumple", "funciona", "material",
-    , "recomiendo", "compra", "servicio", "vendedor", "llegó", "envío", "comentarios",
-    // Agrega aquí nombres de producto y marcas específicas:
-    "xiaomi", "samsung", "motorola", "celular", "poco", "pro", "max", "galaxy", "iphone"
-  ];
-
-  const reviews = data.flatMap(item => {
-    let reviewsArr = [];
-    if (Array.isArray(item.reviews)) {
-      reviewsArr = item.reviews;
-    } else if (typeof item.reviews === "string" && item.reviews.trim().startsWith("[")) {
-      try {
-        const jsonStr = item.reviews
-          .replace(/'/g, '"')
-          .replace(/\\"/g, '"')
-          .replace(/\\n/g, "\\n");
-        reviewsArr = JSON.parse(jsonStr);
-      } catch (e) {
-        reviewsArr = [];
-      }
-    }
-    return reviewsArr
-      .filter(r => {
-        const match = ratingRegex.exec(r.rating || "");
-        if (!match) return false;
-        const ratingNum = Number(match[1]);
-        return isPositiva ? ratingNum >= 4 : ratingNum <= 3;
-      })
-      .map(r => r.content);
-  });
-
-  const palabras = reviews
-    .join(" ")
-    .toLowerCase()
-    .replace(/[.,;:!?¿¡()"]/g, "")
-    .split(/\s+/)
-    .filter(word =>
-      word.length > 3 &&
-      !stopwords.includes(word)
-    );
-
-  const freq = {};
-  palabras.forEach(word => {
-    freq[word] = (freq[word] || 0) + 1;
-  });
-
-  return Object.entries(freq)
-    .map(([text, value]) => ({ text, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 50);
 }
 
 function getLineChartData(data, categoria, filtroTermino) {
@@ -505,21 +445,6 @@ const { categorias: catVentas, datasets: dsVentas } = getVentasPorCategoriaYRati
         chartId="line-ventas-categoria-rating"
         />
       </div>
-      {/* WordCloud */}
-        <div className="bg-pastel-soft p-6 rounded-xl shadow-lg border-2 border-pastel-accent">
-        <WordCloudComponent 
-            words={getWordCloudData(data, "positiva")}
-            title="Palabras frecuentes en reseñas positivas"
-            chartId="wordcloud-positivas"
-        />
-        </div>
-        <div className="bg-pastel-soft p-6 rounded-xl shadow-lg border-2 border-pastel-accent">
-        <WordCloudComponent
-            words={getWordCloudData(data, "negativa")}
-            title="Palabras frecuentes en reseñas negativas"
-            chartId="wordcloud-negativas"
-        />
-        </div>
     </div>
   );
 }
