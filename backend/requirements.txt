@@ -5,3 +5,6 @@ psycopg2-binary
 pandas
 python-dotenv
 python-multipart
+requests
+beautifulsoup4
+
