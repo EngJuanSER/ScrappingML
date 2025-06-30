@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, text
 def categorizar_producto(texto):
     texto = (texto or "").lower()
     categorias = {
-        "tecnología": ["motorola","samsung","512 gb","64 gb","128 gb","8 gb","4 gb","sim","xiaomi", "iphone","4gb","8gb","16gb", "celular", "laptop", "computador", "tablet", "tecnología", "audífono", "monitor", "teclado", "mouse", "tv", "televisor", "smartphone", "impresora", "cámara", "usb", "disco duro", "ssd", "memoria ram", "procesador", "notebook", "gamer", "playstation", "xbox", "nintendo"],
+        "tecnología": ["5g","4g","telefono","reno10","reno12","8gb","oppo","huawei","realme","motorola","samsung","512 gb","64 gb","128 gb","8 gb","4 gb","sim","xiaomi", "iphone","4gb","8gb","16gb", "celular", "laptop", "computador", "tablet", "tecnología", "audífono", "monitor", "teclado", "mouse", "tv", "televisor", "smartphone", "impresora", "cámara", "usb", "disco duro", "ssd", "memoria ram", "procesador", "notebook", "gamer", "playstation", "xbox", "nintendo"],
         "muebles": ["sofá", "silla", "mesa", "cama", "mueble", "closet", "escritorio", "colchón", "repisa", "estante", "comedor", "butaca", "ropero"],
         "ropa": ["camisa", "pantalón", "jean", "chaqueta", "blusa", "falda", "vestido", "zapato", "tenis", "bota", "abrigo", "ropa", "camiseta", "short", "sudadera", "calcetín", "medias"],
         "electrodomésticos": ["nevera", "lavadora", "licuadora", "microondas", "horno", "estufa", "ventilador", "aire acondicionado", "cafetera", "tostadora", "plancha", "secadora"],
