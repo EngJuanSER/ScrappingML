@@ -240,14 +240,4 @@ function getScatterData(categoria: string) {
       preguntas={preguntas}
     />
   </section>
-
-  {/* Word Cloud: Nube de palabras de reseñas (próximamente) */}
-  <section class="mt-12">
-    <div class="bg-pastel-soft p-6 rounded-xl shadow-lg border-2 border-pastel-accent">
-      <h3 class="text-lg font-semibold mb-4 text-pastel-strong">Nube de Palabras de Reseñas</h3>
-      <span class="block text-pastel-strong font-semibold mb-1">¿Qué palabras destacan en las reseñas de los productos?</span>
-      <p class="text-pastel-text mb-2">(Próximamente: aquí se mostrará una nube de palabras interactiva con filtro por categoría.)</p>
-      <WordCloudComponent client:only="react" />
-    </div>
-  </section>
 </Layout>
