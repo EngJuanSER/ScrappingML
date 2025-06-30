@@ -1,0 +1,253 @@
+---
+// filepath: /home/juan-serrano/Documentos/Github/ScrappingML/frontend/src/pages/index.astro
+
+
+import Layout from '../layouts/Layout.astro';
+import DashboardCharts from '../components/DashboardCharts.jsx';
+import CategorizeButton from '../components/CategorizeButton.jsx';
+import KPISection from '../components/KPISection.jsx';
+import { fetchData } from '../utils/api.js';
+import WordCloudComponent from '../components/WordCloud.jsx';
+
+// --- Categorías disponibles (de backend) ---
+const categoriasDisponibles = [
+  'todas',
+  'tecnología',
+  'muebles',
+  'ropa',
+  'electrodomésticos',
+  'hogar',
+  'deporte',
+  'juguetes',
+  'belleza',
+  'herramientas',
+  'otros'
+];
+
+// Estado de filtros por gráfico (Astro Islands: client:load)
+let filtroBar = 'todas';
+let filtroLine = 'todas';
+let filtroPieFull = 'todas';
+let filtroPieFeatures = 'todas';
+let filtroPieProblems = 'todas';
+let filtroPiePriceRange = 'todas';
+let filtroScatter = 'todas';
+let filtroKPI = 'todas';
+
+// Preguntas notebook (puedes ajustar el texto si lo deseas)
+const preguntas = {
+  bar: '¿Cuál es el precio promedio de los productos por término de búsqueda?',
+  line: '¿Cómo evoluciona el precio promedio por página para cada término?',
+  pieFull: '¿Qué proporción de productos tienen envío Full?',
+  pieFeatures: '¿Qué características principales tienen los productos ofertados?',
+  pieProblems: '¿Cuáles son los principales problemas reportados en reseñas negativas?',
+  piePriceRange: '¿Cómo se distribuyen los productos por rango de precio?',
+  scatter: '¿Existe relación entre el precio y la calificación promedio?'
+};
+
+let data: Producto[] = [];
+try {
+  data = await fetchData();
+} catch (e) {
+  data = [];
+}
+
+
+// --- KPIs ---
+function limpiarPrecioColombiano(precio: any): number {
+  if (precio === null || precio === undefined) return NaN;
+  if (typeof precio === 'number') return Math.round(precio);
+  let str = String(precio).replace(/[^0-9,\.]/g, '');
+  str = str.replace(/\./g, '');
+  str = str.replace(/,/g, '.');
+  const num = parseFloat(str);
+  return isNaN(num) ? NaN : Math.round(num);
+}
+const formatoCOP = (valor: number) => valor.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+
+interface Producto {
+  price?: string | number;
+  search_term?: string;
+  page?: number;
+  full_description?: string;
+  shipping?: string;
+  promotion?: string;
+  reviews?: { rating?: string | number; content?: string }[];
+  avg_rating?: string | number;
+  title?: string;
+  categoria?: string;
+}
+// --- BarChart: Precio promedio por término de búsqueda (con filtro de categoría) ---
+function getBarChartData(categoria: string) {
+  const preciosPorSearchTerm: { [key: string]: { sum: number; count: number } } = {};
+  for (const item of data as Producto[]) {
+    if (!item.search_term) continue;
+    if (categoria !== 'todas' && item.categoria !== categoria) continue;
+    if (!preciosPorSearchTerm[item.search_term]) preciosPorSearchTerm[item.search_term] = { sum: 0, count: 0 };
+    const price = limpiarPrecioColombiano(item.price);
+    if (!isNaN(price) && price > 0) {
+      preciosPorSearchTerm[item.search_term].sum += price;
+      preciosPorSearchTerm[item.search_term].count++;
+    }
+  }
+  const barLabels: string[] = Object.keys(preciosPorSearchTerm);
+  const barData: number[] = barLabels.map((term: string) =>
+    preciosPorSearchTerm[term].count > 0
+      ? preciosPorSearchTerm[term].sum / preciosPorSearchTerm[term].count
+      : 0
+  );
+  return { barLabels, barData };
+}
+
+// --- LineChart: Evolución de precios por término (página) (con filtro de categoría) ---
+function getLineChartData(categoria: string) {
+  const preciosPorPagina: { [key: string]: { sum: number; count: number } } = {};
+  for (const item of data as Producto[]) {
+    if (!item.search_term || typeof item.page === 'undefined') continue;
+    if (categoria !== 'todas' && item.categoria !== categoria) continue;
+    const key = `${item.search_term} (Pág ${item.page})`;
+    if (!preciosPorPagina[key]) preciosPorPagina[key] = { sum: 0, count: 0 };
+    const price = limpiarPrecioColombiano(item.price);
+    if (!isNaN(price) && price > 0) {
+      preciosPorPagina[key].sum += price;
+      preciosPorPagina[key].count++;
+    }
+  }
+  const lineLabels: string[] = Object.keys(preciosPorPagina).sort();
+  const lineData: number[] = lineLabels.map((key: string) =>
+    preciosPorPagina[key].count > 0
+      ? preciosPorPagina[key].sum / preciosPorPagina[key].count
+      : 0
+  );
+  return { lineLabels, lineData };
+}
+
+// --- PieChart: Distribución por Full (con filtro de categoría) ---
+function getPieFullData(categoria: string) {
+  const filtered = (data as Producto[]).filter((item: Producto) => categoria === 'todas' || item.categoria === categoria);
+  const conFull = filtered.filter((item: Producto) => (item.full_description || '').includes('FULL')).length;
+  const sinFull = filtered.length - conFull;
+  return { pieLabelsFull: ['Con Full', 'Sin Full'], pieDataFull: [conFull, sinFull] };
+}
+
+// --- PieChart: Características de productos (con filtro de categoría) ---
+function getPieFeaturesData(categoria: string) {
+  const filtered = (data as Producto[]).filter((item: Producto) => categoria === 'todas' || item.categoria === categoria);
+  const features: { [key: string]: number } = {
+    'Envío gratis': filtered.filter((item: Producto) => (item.shipping || '').toLowerCase().includes('gratis')).length,
+    'MercadoLibre Full': filtered.filter((item: Producto) => (item.full_description || '').length > 0).length,
+    'Con promoción': filtered.filter((item: Producto) => (item.promotion || '').length > 0).length
+  };
+  return { pieLabelsFeatures: Object.keys(features), pieDataFeatures: Object.values(features) };
+}
+
+// --- PieChart: Problemas en reseñas negativas (con filtro de categoría) ---
+function getPieProblemsData(categoria: string) {
+  const problemCategories: { [key: string]: string[] } = {
+    'Envío': ['envío', 'envio', 'entrega', 'demora', 'tardó', 'llegó tarde'],
+    'Calidad': ['calidad', 'malo', 'mala', 'defecto', 'roto', 'dañado'],
+    'Precio': ['caro', 'precio', 'costoso', 'valor', 'dinero'],
+    'Funcionalidad': ['funciona', 'sirve', 'uso', 'inútil', 'no sirve'],
+    'Descripción': ['descripción', 'diferente', 'engaño', 'publicidad falsa'],
+    'Atención': ['atención', 'vendedor', 'servicio', 'respuesta']
+  };
+  let negativeReviews: string[] = [];
+  for (const item of data as Producto[]) {
+    if (categoria !== 'todas' && item.categoria !== categoria) continue;
+    if (Array.isArray(item.reviews)) {
+      for (const r of item.reviews) {
+        const rating = (r.rating || '').toString().toLowerCase();
+        if (rating.includes('1') || rating.includes('2')) {
+          if (r.content && r.content.trim()) negativeReviews.push(r.content);
+        }
+      }
+    }
+  }
+  if (negativeReviews.length === 0) negativeReviews = [
+    'El producto llegó con retraso y en mal estado.',
+    'La calidad no es como se muestra en las fotos.',
+    'Caro para lo que ofrece, no lo recomiendo.',
+    'No funciona como debería, me decepcionó.',
+    'La descripción no coincide con el producto real.'
+  ];
+  const categories: { [key: string]: number } = {};
+  for (const review of negativeReviews) {
+    let found = false;
+    const reviewLower = review.toLowerCase();
+    for (const [cat, keywords] of Object.entries(problemCategories)) {
+      if ((keywords as string[]).some((k: string) => reviewLower.includes(k))) {
+        categories[cat] = (categories[cat] || 0) + 1;
+        found = true;
+      }
+    }
+    if (!found) categories['Otros'] = (categories['Otros'] || 0) + 1;
+  }
+  return { pieLabelsProblems: Object.keys(categories), pieDataProblems: Object.values(categories) };
+}
+
+// --- PieChart: Distribución por rango de precio (con filtro de categoría) ---
+function getPiePriceRangeData(categoria: string) {
+  const filtered = (data as Producto[]).filter((item: Producto) => categoria === 'todas' || item.categoria === categoria);
+  const preciosLimpiosCat: number[] = filtered.map((item: Producto) => limpiarPrecioColombiano(item.price)).filter((x: number) => !isNaN(x) && x > 0);
+  const precioProm: number = preciosLimpiosCat.length > 0 ? preciosLimpiosCat.reduce((a, b) => a + b, 0) / preciosLimpiosCat.length : 0;
+  const umbralBajo: number = precioProm * 0.8;
+  const umbralAlto: number = precioProm * 1.2;
+  const priceRanges: { [key: string]: number } = {
+    [`Económico (< $${umbralBajo.toFixed(0)})`]: preciosLimpiosCat.filter((p: number) => p < umbralBajo).length,
+    [`Medio ($${umbralBajo.toFixed(0)} - $${umbralAlto.toFixed(0)})`]: preciosLimpiosCat.filter((p: number) => p >= umbralBajo && p <= umbralAlto).length,
+    [`Premium (> $${umbralAlto.toFixed(0)})`]: preciosLimpiosCat.filter((p: number) => p > umbralAlto).length
+  };
+  return { pieLabelsPriceRange: Object.keys(priceRanges), pieDataPriceRange: Object.values(priceRanges) };
+}
+
+// --- ScatterChart: Precio vs. Calificación Promedio (con filtro de categoría) ---
+function getScatterData(categoria: string) {
+  interface ScatterPoint { x: number; y: number; title?: string }
+  return (data as Producto[])
+    .filter((item: Producto) => {
+      if (categoria !== 'todas' && item.categoria !== categoria) return false;
+      const price = limpiarPrecioColombiano(item.price);
+      const avgRating = Number(item.avg_rating);
+      return !isNaN(price) && price > 0 && !isNaN(avgRating) && avgRating > 0;
+    })
+    .map((item: Producto) => ({
+      x: limpiarPrecioColombiano(item.price),
+      y: Number(item.avg_rating),
+      title: item.title
+    }));
+}
+---
+
+<Layout title="Dashboard | MercadoLibre Analysis">
+  <section class="mb-10">
+    <h1 class="text-4xl font-extrabold mb-2 text-pastel-strong">Dashboard de Análisis</h1>
+    <p class="text-lg text-pastel-text mb-6">Visualiza y explora los datos de MercadoLibre de forma clara y atractiva.</p>
+    <div class="flex flex-col gap-4 mb-4">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div class="flex-1">
+        <KPISection client:load data={data} categoriasDisponibles={categoriasDisponibles} /> 
+        </div>
+          <CategorizeButton client:load apiUrl={import.meta.env.PUBLIC_API_URL || 'http://localhost:8000'} onCategorized={async () => { data = await fetchData(); }} />
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <DashboardCharts
+      client:only="react"
+      data={data}
+      categoriasDisponibles={categoriasDisponibles}
+      preguntas={preguntas}
+    />
+  </section>
+
+  {/* Word Cloud: Nube de palabras de reseñas (próximamente) */}
+  <section class="mt-12">
+    <div class="bg-pastel-soft p-6 rounded-xl shadow-lg border-2 border-pastel-accent">
+      <h3 class="text-lg font-semibold mb-4 text-pastel-strong">Nube de Palabras de Reseñas</h3>
+      <span class="block text-pastel-strong font-semibold mb-1">¿Qué palabras destacan en las reseñas de los productos?</span>
+      <p class="text-pastel-text mb-2">(Próximamente: aquí se mostrará una nube de palabras interactiva con filtro por categoría.)</p>
+      <WordCloudComponent client:only="react" />
+    </div>
+  </section>
+</Layout>

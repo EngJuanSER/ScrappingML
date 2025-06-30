@@ -1,0 +1,10 @@
+
+---
+import NavbarLayout from './NavbarLayout.astro';
+const { title = 'Dashboard MercadoLibre', description = 'Dashboard de Scraping y Análisis de Productos MercadoLibre' } = Astro.props;
+---
+
+<NavbarLayout title={title} description={description}>
+    <slot />
+</NavbarLayout>
+</html>

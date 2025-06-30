@@ -1,0 +1,218 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Scraping | MercadoLibre Analysis">
+  <section class="mb-10">
+    <h1 class="text-4xl font-extrabold mb-2 text-pastel-strong">Configurar Scraping</h1>
+    <p class="text-lg text-pastel-text mb-6">Lanza un scraping de MercadoLibre y visualiza el estado en tiempo real.</p>
+    <form id="scraping-form" class="bg-pastel-yellow p-6 rounded-xl shadow-lg border-2 border-pastel-accent flex flex-col md:flex-row items-center gap-4 mb-4" data-api-url={import.meta.env.PUBLIC_API_URL}>
+      <input type="text" id="query" name="query" placeholder="Término de búsqueda" class="flex-1 border border-pastel-accent rounded py-2 px-4 bg-pastel-white text-pastel-strong" required />
+      <input type="number" id="pages" name="pages" min="1" value="1" class="w-24 border border-pastel-accent rounded py-2 px-4 bg-pastel-white text-pastel-strong" required />
+      <input type="password" id="password" name="password" placeholder="Contraseña Backend" class="w-56 border border-pastel-accent rounded py-2 px-4 bg-pastel-white text-pastel-strong" required />
+      <button type="submit" id="start-scraping-btn" class="bg-pastel-orange hover:bg-pastel-yellow text-pastel-strong font-bold py-2 px-6 rounded transition-colors border border-pastel-accent cursor-pointer hover:scale-105 active:scale-95 hover:shadow-xl">
+        Lanzar Scraping
+      </button>
+      <div id="scraping-feedback" class="text-sm text-pastel-strong"></div>
+    </form>
+    <div id="scraping-status" class="bg-pastel-soft p-4 rounded-lg border border-pastel-accent shadow mb-4 text-pastel-strong"></div>
+  </section>
+  <script type="module">
+    // Leer la URL de la API desde el atributo data-api-url del formulario
+    const form = document.getElementById('scraping-form');
+    const API_URL = form.getAttribute('data-api-url');
+    if (!API_URL) {
+      alert('No se encontró la URL de la API. Contacta al administrador.');
+      throw new Error('API_URL no definida');
+    }
+    const feedback = document.getElementById('scraping-feedback');
+    const statusDiv = document.getElementById('scraping-status');
+
+    async function startScraping(query, pages, password) {
+      const num_pages = Number(pages);
+      const url = `${API_URL}/scrap?query=${encodeURIComponent(query)}&num_pages=${num_pages}&password=${encodeURIComponent(password)}`;
+      console.log('[SCRAP] POST', url, { query, num_pages, password });
+      const res = await fetch(url, {
+        method: 'POST'
+      });
+      let json;
+      try {
+        json = await res.clone().json();
+      } catch (e) {
+        json = null;
+      }
+      console.log('[SCRAP] Respuesta', res.status, json);
+      if (!res.ok) throw new Error('No autorizado o error de red');
+      return json;
+    }
+
+    async function getScrapingStatus() {
+      const url = `${API_URL}/scrap-status`;
+      console.log('[SCRAP] GET', url);
+      const res = await fetch(url);
+      let json;
+      try {
+        json = await res.clone().json();
+      } catch (e) {
+        json = null;
+      }
+      console.log('[SCRAP] Respuesta', res.status, json);
+      if (!res.ok) throw new Error('Error de red');
+      return json;
+    }
+
+    function updateStatus(status) {
+      try {
+        let html = '';
+        // Animación de carga si hay trabajos activos
+        if (status.current && status.current.length > 0) {
+          html += `<div class="flex items-center gap-2 mb-2 animate-pulse">
+            <svg class="w-6 h-6 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+            <span class="text-blue-700 font-semibold">Procesando scrapings en curso...</span>
+          </div>`;
+        }
+        html += '<div class="mb-4">';
+        html += `<b class="text-lg text-pastel-strong">Scrapings en curso <span class='ml-2 px-2 py-1 rounded-full bg-pastel-orange text-pastel-strong font-bold text-base align-middle'>${status.current ? status.current.length : 0}</span></b>`;
+        if (status.current && status.current.length > 0) {
+          html += '<ul class="space-y-2 mt-2">';
+          status.current.forEach((item, i) => {
+            // Calcular progreso y tiempo transcurrido
+            const pct = Math.round((item.progress || 0) * 100);
+            let tiempo = '';
+            if (item.start_time) {
+              const secs = Math.floor((Date.now()/1000) - item.start_time);
+              const min = Math.floor(secs/60);
+              const seg = secs%60;
+              tiempo = `${min > 0 ? min+'m ' : ''}${seg}s`;
+            }
+            // Mostrar productos procesados y estimados
+            const processed = item.processed_products || 0;
+            const estimated = item.estimated_total_products || (item.num_pages ? item.num_pages*48 : 0);
+            html += `<li class="bg-blue-100 border-l-4 border-blue-500 p-3 rounded shadow flex flex-col md:flex-row md:items-center gap-2 animate-fade-in group relative">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500 animate-spin-slow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                <span class="font-bold" title="Término de búsqueda">${item.query}</span>
+                <span class="text-xs text-blue-700" title="Páginas a scrapear">(${item.num_pages} páginas)</span>
+              </div>
+              <div class="flex items-center gap-2 w-full">
+                <div class="flex-1 bg-blue-200 rounded-full h-3 overflow-hidden relative">
+                  <div class="bg-blue-500 h-3 rounded-full transition-all duration-700" style="width:${pct}%;min-width:2%"></div>
+                  <div class="absolute left-1/2 top-0 -translate-x-1/2 text-xs text-blue-900 font-bold" style="z-index:2;">${pct}%</div>
+                </div>
+                <span class="text-xs text-gray-600 ml-2">${tiempo ? '⏱ '+tiempo : ''}</span>
+                <span class="text-xs text-gray-500 ml-2" title="Productos procesados">${processed} / ${estimated}</span>
+                <button class="ml-2 px-2 py-1 rounded bg-red-100 text-red-700 font-bold text-xs border border-red-300 hover:bg-red-200 transition hidden group-hover:inline-block" onclick="window.cancelScraping && window.cancelScraping('${item.query}',${item.num_pages})" title="Cancelar scraping">✖</button>
+              </div>
+            </li>`;
+          });
+          // Función global para cancelar (solo si no existe)
+          if (!window.cancelScraping) {
+            window.cancelScraping = async (query, num_pages) => {
+              if (!confirm('¿Cancelar este scraping?')) return;
+              try {
+                const url = `${API_URL}/scrap-cancel?query=${encodeURIComponent(query)}&num_pages=${num_pages}`;
+                const res = await fetch(url, { method: 'DELETE' });
+                const json = await res.json();
+                alert(json.message);
+                smartUpdateStatus();
+              } catch (e) {
+                alert('Error cancelando: ' + (e?.message || e));
+              }
+            }
+          }
+          html += '</ul>';
+        } else {
+          html += '<div class="text-pastel-strong mt-2">Ningún scraping en curso</div>';
+        }
+        html += '</div>';
+        html += '<hr class="my-4" />';
+        html += `<div class="mb-2"><b class="text-lg text-pastel-strong">Cola de espera <span class='ml-2 px-2 py-1 rounded-full bg-pastel-orange text-pastel-strong font-bold text-base align-middle'>${status.queue ? status.queue.length : 0}</span></b></div>`;
+        if (status.queue && status.queue.length > 0) {
+          html += '<ul class="space-y-2">';
+          status.queue.forEach((item, i) => {
+            html += `<li class="bg-yellow-100 border-l-4 border-yellow-500 p-3 rounded shadow flex items-center gap-2 animate-fade-in">
+              <svg class="w-4 h-4 text-yellow-500 animate-bounce" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" /></svg>
+              <span class="font-bold">${item.query}</span>
+              <span class="text-xs text-yellow-700">(${item.num_pages} páginas)</span>
+            </li>`;
+          });
+          html += '</ul>';
+        } else {
+          html += '<div class="text-pastel-strong">Cola: Vacía</div>';
+        }
+        statusDiv.innerHTML = html;
+        // Agregar animaciones CSS si no existen
+        if (!document.getElementById('scrap-anim-css')) {
+          const style = document.createElement('style');
+          style.id = 'scrap-anim-css';
+          style.innerHTML = `
+            @keyframes fade-in { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none;}}
+            .animate-fade-in { animation: fade-in 0.5s; }
+            @keyframes spin-slow { 100% { transform: rotate(360deg); } }
+            .animate-spin-slow { animation: spin-slow 2s linear infinite; }
+          `;
+          document.head.appendChild(style);
+        }
+      } catch (e) {
+        console.error('[API] Error scraping status:', e);
+        statusDiv.innerHTML = '<span class="text-red-600">Error al cargar estado.</span>';
+      }
+    }
+
+    // Polling inteligente: solo mientras el scraping esté activo
+    let pollingInterval = null;
+    async function smartUpdateStatus() {
+      try {
+        const status = await getScrapingStatus();
+        console.log('[API] Estado scraping:', status);
+        let hayActivos = status.current && status.current.length > 0;
+        updateStatus(status);
+        // Si ya no hay activos, detener el polling
+        if (!hayActivos && pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+        // Si hay activos y no hay polling, iniciarlo
+        if (hayActivos && !pollingInterval) {
+          pollingInterval = setInterval(smartUpdateStatus, 5000);
+        }
+      } catch (e) {
+        console.error('[API] Error scraping status:', e);
+        statusDiv.innerHTML = '<span class="text-red-600">Error al cargar estado.</span>';
+      }
+    }
+
+    // Llamada inicial
+    smartUpdateStatus();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      feedback.textContent = '';
+      const query = document.getElementById('query').value.trim();
+      let pages = document.getElementById('pages').value;
+      const password = document.getElementById('password').value;
+      pages = parseInt(pages, 10);
+      if (!query || !pages || !password || isNaN(pages) || pages < 1) {
+        feedback.innerHTML = '<span class="text-red-600">Completa todos los campos y asegúrate de que las páginas sean un número válido mayor a 0.</span>';
+        return;
+      }
+      feedback.innerHTML = '<span class="text-blue-600">Enviando solicitud...</span>';
+      try {
+        const result = await startScraping(query, pages, password);
+        console.log('[API] Resultado scraping:', result);
+        if (result.status === 'enqueued') {
+          feedback.innerHTML = `<span class="text-orange-600">${result.message}</span>`;
+        } else {
+          feedback.innerHTML = `<span class="text-green-600">Scraping iniciado. Registros insertados: ${result.inserted}</span>`;
+        }
+        // Después de lanzar scraping, inicia polling si no está activo
+        if (!pollingInterval) {
+          pollingInterval = setInterval(smartUpdateStatus, 5000);
+        }
+      } catch (err) {
+        console.error('[API] Error scraping:', err);
+        feedback.innerHTML = `<span class="text-red-600">Error: ${err?.message || err}</span>`;
+      }
+    });
+  </script>
+</Layout>

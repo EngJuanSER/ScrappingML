@@ -1,0 +1,100 @@
+---
+import '../styles/global.css';
+const { title = 'Dashboard MercadoLibre', description = 'Dashboard de Scraping y Análisis de Productos MercadoLibre' } = Astro.props;
+---
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description} />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body class="bg-pastel-white text-pastel-strong min-h-screen">
+    <!-- NAVBAR -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-pastel-yellow shadow-lg border-b-2 border-pastel-accent flex items-center h-16 px-6">
+      <button id="sidebar-toggle" class="mr-4 p-2 rounded bg-pastel-orange text-pastel-strong font-bold cursor-pointer" type="button">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <span class="text-2xl font-bold flex items-center gap-2">
+        <span class="text-3xl">🛒</span> Dashboard ML
+      </span>
+    </header>
+
+    <!-- LAYOUT PRINCIPAL -->
+    <div id="main-layout" class="flex pt-16 min-h-screen transition-all duration-300">
+      <!-- SIDEBAR DESPLEGABLE -->
+      <aside id="sidebar"
+        class="fixed left-0 top-16 z-50 w-64 bg-pastel-orange text-pastel-strong flex-shrink-0 border-r-2 border-pastel-accent shadow-xl h-[calc(100vh-4rem)] transform -translate-x-full transition-transform duration-300"
+        style="will-change: transform;"
+      >
+        <div class="p-6">
+          <h2 class="text-2xl font-extrabold mb-6 tracking-tight">Navegación</h2>
+          <nav>
+            <ul>
+              <li class="mb-2">
+                <a href="/" class="block py-2 px-4 rounded hover:bg-pastel-yellow hover:text-pastel-accent font-semibold transition-colors duration-200">Dashboard</a>
+              </li>
+              <li class="mb-2">
+                <a href="/scraping" class="block py-2 px-4 rounded hover:bg-pastel-yellow hover:text-pastel-accent font-semibold transition-colors duration-200">Scraping</a>
+              </li>
+              <li class="mb-2">
+                <a href="/uploadcsv" class="block py-2 px-4 rounded hover:bg-pastel-yellow hover:text-pastel-accent font-semibold transition-colors duration-200">Subir CSV</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+      <!-- CONTENIDO PRINCIPAL -->
+      <main id="main-content" class="flex-1 p-8 bg-gradient-to-br from-pastel-yellow/60 to-pastel-white/80 min-h-[calc(100vh-4rem)] transition-all duration-300">
+        <div class="max-w-6xl mx-auto">
+          <slot />
+        </div>
+      </main>
+    </div>
+    <script is:inline>
+      const btn = document.getElementById('sidebar-toggle');
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.getElementById('main-content');
+
+      function openSidebar() {
+        sidebar.classList.remove('-translate-x-full');
+        mainContent.classList.add('blur-sm');
+        // Cierra al hacer click fuera del sidebar
+        setTimeout(() => {
+          document.addEventListener('mousedown', handleClickOutside);
+        }, 10);
+      }
+      function closeSidebar() {
+        sidebar.classList.add('-translate-x-full');
+        mainContent.classList.remove('blur-sm');
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+      function handleClickOutside(e) {
+        if (!sidebar.contains(e.target) && !btn.contains(e.target)) {
+          closeSidebar();
+        }
+      }
+      btn.addEventListener('click', () => {
+        if (sidebar.classList.contains('-translate-x-full')) {
+          openSidebar();
+        } else {
+          closeSidebar();
+        }
+      });
+      // Cerrar con ESC
+      document.addEventListener('keydown', (e) => {
+        if (!sidebar.classList.contains('-translate-x-full') && e.key === 'Escape') {
+          closeSidebar();
+        }
+      });
+      // Opcional: cerrar sidebar al navegar
+      sidebar.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', closeSidebar);
+      });
+    </script>
+  </body>
+</html>

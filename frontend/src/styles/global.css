@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #FFF9C4 0%, #FFD59E 100%);
+  color: #B85C00;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #B85C00;
+}
+
+.bg-pastel-yellow {
+  background-color: #FFF9C4;
+}
+.bg-pastel-orange {
+  background-color: #FFD59E;
+}
+.bg-pastel-white {
+  background-color: #FFFDF6;
+}
+.bg-pastel-soft {
+  background-color: #FFF3E0;
+}
+.text-pastel-accent {
+  color: #FFB74D;
+}
+.text-pastel-strong {
+  color: #B85C00;
+}
+.border-pastel-accent {
+  border-color: #FFB74D;
+}

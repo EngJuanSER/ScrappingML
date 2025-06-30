@@ -1,0 +1,93 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Subir CSV | MercadoLibre Analysis">
+  <section class="mb-10">
+    <h1 class="text-4xl font-extrabold mb-2 text-pastel-strong">Subir Archivo CSV</h1>
+    <p class="text-lg text-pastel-text mb-6">Carga tus datos de MercadoLibre en formato CSV para analizarlos en el dashboard.</p>
+    <form id="csv-upload-form" class="bg-pastel-yellow p-6 rounded-xl shadow-lg border-2 border-pastel-accent flex flex-col md:flex-row items-center gap-4 mb-4" data-api-url={import.meta.env.PUBLIC_API_URL}>
+      <input type="file" id="csv-file" accept=".csv" class="flex-1 border border-pastel-accent rounded py-2 px-4 bg-pastel-white text-pastel-strong" required />
+      <input type="password" id="csv-password" placeholder="Contraseña Backend" class="w-56 border border-pastel-accent rounded py-2 px-4 bg-pastel-white text-pastel-strong" required />
+      <button type="submit" class="bg-pastel-orange hover:bg-pastel-yellow text-pastel-strong font-bold py-2 px-6 rounded transition-colors border border-pastel-accent cursor-pointer hover:scale-105 active:scale-95 hover:shadow-xl">
+        Subir CSV
+      </button>
+      <div id="csv-feedback" class="text-sm text-pastel-strong"></div>
+    </form>
+  </section>
+  <section class="bg-pastel-soft p-8 rounded-xl shadow-lg border-2 border-pastel-accent max-w-3xl mx-auto">
+    <h2 class="text-2xl font-bold mb-4 text-pastel-strong">¿Cómo debe ser el archivo?</h2>
+    <ul class="list-disc pl-6 text-pastel-strong space-y-2">
+      <li>El archivo debe estar en formato <b>CSV</b> y tener encabezados.</li>
+      <li>Incluye columnas como: <code>title, price, full, shipping, promotion, avg_rating, reviews</code>.</li>
+      <li>El tamaño máximo recomendado es 5MB.</li>
+    </ul>
+  </section>
+  <script type="module">
+    // Lógica de API para el cliente: leer la URL desde el atributo data-api-url
+    const form = document.getElementById('csv-upload-form');
+    const API_URL = form.getAttribute('data-api-url');
+    if (!API_URL) {
+      alert('No se encontró la URL de la API. Contacta al administrador.');
+      throw new Error('API_URL no definida');
+    }
+    function uploadCsvWithProgress(file, password, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_URL}/upload_csv`);
+        xhr.setRequestHeader('Authorization', password);
+        xhr.upload.onprogress = function (e) {
+          if (e.lengthComputable && typeof onProgress === 'function') {
+            onProgress(e.loaded, e.total);
+          }
+        };
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch (e) {
+              resolve({ message: 'Archivo subido.' });
+            }
+          } else {
+            reject(new Error('No autorizado o error de red'));
+          }
+        };
+        xhr.onerror = function () { reject(new Error('Error de red')); };
+        const formData = new FormData();
+        formData.append('file', file);
+        xhr.send(formData);
+      });
+    }
+
+    document.getElementById('csv-upload-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const fileInput = document.getElementById('csv-file');
+      const passwordInput = document.getElementById('csv-password');
+      const feedbackDiv = document.getElementById('csv-feedback');
+      if (!fileInput || !fileInput.files.length) {
+        feedbackDiv.innerHTML = '<span class="text-red-600">Selecciona un archivo CSV.</span>';
+        return;
+      }
+      if (!passwordInput || !passwordInput.value) {
+        feedbackDiv.innerHTML = '<span class="text-red-600">Ingresa la contraseña.</span>';
+        return;
+      }
+      feedbackDiv.innerHTML = `<div id="csv-progress-bar" class="w-full bg-blue-100 rounded-full h-4 overflow-hidden mb-2"><div class="bg-blue-500 h-4 rounded-full transition-all duration-500" style="width:0%"></div></div><span class="text-blue-600">Subiendo archivo...</span>`;
+      const progressBar = document.getElementById('csv-progress-bar').firstElementChild;
+      try {
+        const result = await uploadCsvWithProgress(fileInput.files[0], passwordInput.value, (loaded, total) => {
+          const pct = Math.round((loaded / total) * 100);
+          progressBar.style.width = pct + '%';
+          progressBar.textContent = pct + '%';
+        });
+        progressBar.style.width = '100%';
+        progressBar.classList.add('bg-green-500');
+        feedbackDiv.innerHTML = `<div class="w-full bg-green-100 rounded-full h-4 overflow-hidden mb-2"><div class="bg-green-500 h-4 rounded-full" style="width:100%"></div></div><span class="text-green-600">${result.message || 'Archivo subido correctamente.'}</span>`;
+      } catch (error) {
+        progressBar.classList.remove('bg-blue-500');
+        progressBar.classList.add('bg-red-500');
+        feedbackDiv.innerHTML = `<div class="w-full bg-red-100 rounded-full h-4 overflow-hidden mb-2"><div class="bg-red-500 h-4 rounded-full" style="width:100%"></div></div><span class="text-red-600">Error: ${error?.message || error}</span>`;
+      }
+    });
+  </script>
+</Layout>
