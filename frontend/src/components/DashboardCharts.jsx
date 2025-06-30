@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchData } from "../utils/api.js";
 import BarChart from "./BarChart.jsx";
 import LineChart from "./LineChart.jsx";
 import PieChart from "./PieChart.jsx";
@@ -304,13 +305,11 @@ function getLineVentasPorCategoriaYRating(data) {
   return { categorias, datos, ratings };
 }
 
-export default function DashboardCharts({
-  data,
-  categoriasDisponibles,
-  preguntas
-}) {
-    
-const { categorias: catVentas, datasets: dsVentas } = getVentasPorCategoriaYRating(data);
+
+  export default function DashboardCharts({ categoriasDisponibles, preguntas }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filtroBar, setFiltroBar] = useState("todas");
   const [filtroLine, setFiltroLine] = useState("todas");
   const [filtroPieFull, setFiltroPieFull] = useState("todas");
@@ -318,8 +317,34 @@ const { categorias: catVentas, datasets: dsVentas } = getVentasPorCategoriaYRati
   const [filtroPieProblems, setFiltroPieProblems] = useState("todas");
   const [filtroPiePriceRange, setFiltroPiePriceRange] = useState("todas");
   const [filtroScatter, setFiltroScatter] = useState("todas");
+  const [filtroTermino, setFiltroTermino] = useState("");
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchData();
+        setData(result);
+        // Inicializar filtroTermino con el primer término disponible
+        const terms = Array.from(new Set(result.map(item => item.search_term)));
+        setFiltroTermino(terms[0] || "");
+      } catch (e) {
+        setError("No se pudo cargar los datos");
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const { categorias: catVentas, datasets: dsVentas } = getVentasPorCategoriaYRating(data);
   const terminosDisponibles = Array.from(new Set(data.map(item => item.search_term)));
-  const [filtroTermino, setFiltroTermino] = useState(terminosDisponibles[0] || "");
+
+  if (loading) return <div>Cargando datos...</div>;
+  if (error) return <div style={{ color: 'red' }}>{error}</div>;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
       {/* BarChart */}

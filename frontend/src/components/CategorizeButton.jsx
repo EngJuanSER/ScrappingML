@@ -1,19 +1,23 @@
 import React, { useState } from "react";
 
-export default function CategorizeButton({ apiUrl, onCategorized }) {
+
+export default function CategorizeButton({ apiUrl }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [success, setSuccess] = useState(false);
 
   const handleClick = async () => {
     setLoading(true);
     setResult(null);
+    setSuccess(false);
     try {
       const res = await fetch(`${apiUrl}/data/categorize-all`, { method: "POST" });
       const json = await res.json();
       setResult(json.message || "¡Listo!");
-      if (onCategorized) onCategorized();
+      setSuccess(true);
     } catch (e) {
       setResult("Error al categorizar: " + e.message);
+      setSuccess(false);
     }
     setLoading(false);
   };

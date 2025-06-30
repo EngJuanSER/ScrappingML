@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchData } from "../utils/api.js";
 import CategoryFilter from "./CategoryFilter.jsx";
 
 // Utilidades compartidas (importar desde DashboardCharts si se prefiere)
@@ -13,8 +14,31 @@ export function limpiarPrecioColombiano(precio) {
   return isNaN(num) ? NaN : Math.round(num);
 }
 
-export default function KPISection({ data, categoriasDisponibles }) {
+export default function KPISection({ categoriasDisponibles }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filtroKPI, setFiltroKPI] = useState("todas");
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fetchData();
+        setData(result);
+      } catch (e) {
+        setError("No se pudo cargar los datos");
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading) return <div>Cargando KPIs...</div>;
+  if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
   // KPIs calculados con limpieza robusta
   const productosFiltrados = data.filter(item => filtroKPI === 'todas' || item.categoria === filtroKPI);
