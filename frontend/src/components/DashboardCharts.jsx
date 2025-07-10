@@ -122,10 +122,24 @@ function getPieProblemsData(data, categoria) {
   let negativeReviews = [];
   for (const item of data) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
-      if (Array.isArray(item.reviews) && item.reviews.length > 0) {
-        console.log('Processing reviews for item:', item.title, item.reviews);
-      for (const r of item.reviews) {
-        // Extraer el número del string de rating, ej: "Calificación 5 de 5" -> 5
+
+    let reviewsList = [];
+    if (typeof item.reviews === 'string') {
+      try {
+        // The reviews are stored as a string representation of a Python list.
+        // Replace single quotes with double quotes to make it valid JSON, then parse.
+        const jsonString = item.reviews.replace(/'/g, '"');
+        reviewsList = JSON.parse(jsonString);
+      } catch (e) {
+        console.error("Failed to parse reviews string:", item.reviews, e);
+        reviewsList = []; // Treat as empty if parsing fails
+      }
+    } else if (Array.isArray(item.reviews)) {
+      reviewsList = item.reviews;
+    }
+
+    if (reviewsList.length > 0) {
+      for (const r of reviewsList) {
         const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
         const ratingNum = ratingMatch ? parseFloat(ratingMatch[1]) : NaN;
 
@@ -137,7 +151,6 @@ function getPieProblemsData(data, categoria) {
       }
     }
   }
-  console.log('All negative reviews found:', negativeReviews);
   // Si no hay reseñas negativas, mostrar "Sin problemas reportados"
   if (negativeReviews.length === 0) {
     return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
