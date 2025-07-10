@@ -126,7 +126,7 @@ function getPieProblemsData(data, categoria) {
       for (const r of item.reviews) {
         // rating puede ser string o número, considerar 1 o 2 como negativo
         const ratingNum = Number(r.rating);
-        if (!isNaN(ratingNum) && ratingNum <= 2) {
+        if (!isNaN(ratingNum) && ratingNum <= 4.0) {
           if (r.content && r.content.trim()) negativeReviews.push(r.content);
         }
       }
