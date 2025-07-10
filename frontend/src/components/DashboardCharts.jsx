@@ -120,10 +120,25 @@ function getPieProblemsData(data, categoria) {
     'Atención': ['atención', 'vendedor', 'servicio', 'respuesta']
   };
   let negativeReviews = [];
+  console.log("--- Starting getPieProblemsData ---");
+
   for (const item of data) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
 
-    const reviewsList = Array.isArray(item.reviews) ? item.reviews : [];
+    let reviewsList = [];
+    // Log the raw reviews data for each item
+    console.log(`Item: ${item.title}, Raw reviews type: ${typeof item.reviews}, Raw reviews content:`, item.reviews);
+
+    if (typeof item.reviews === 'string' && item.reviews.length > 2) { // Check for non-empty string '[]'
+      try {
+        reviewsList = JSON.parse(item.reviews);
+        console.log(`Successfully parsed reviews for ${item.title}`);
+      } catch (e) {
+        console.error(`Failed to parse reviews string for ${item.title}:`, e);
+      }
+    } else if (Array.isArray(item.reviews)) {
+      reviewsList = item.reviews;
+    }
 
     if (reviewsList.length > 0) {
       for (const r of reviewsList) {
@@ -138,6 +153,10 @@ function getPieProblemsData(data, categoria) {
       }
     }
   }
+
+  console.log("--- Finished processing all items ---");
+  console.log("Total negative reviews found:", negativeReviews);
+
   // Si no hay reseñas negativas, mostrar "Sin problemas reportados"
   if (negativeReviews.length === 0) {
     return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
@@ -154,6 +173,7 @@ function getPieProblemsData(data, categoria) {
     }
     if (!found) categories['Otros'] = (categories['Otros'] || 0) + 1;
   }
+  console.log("Categorized problems:", categories);
   return { pieLabelsProblems: Object.keys(categories), pieDataProblems: Object.values(categories) };
 }
 
