@@ -172,7 +172,6 @@ function getPieProblemsData(data, categoria) {
 
           if (!isNaN(ratingNum) && ratingNum <= 4.0) {
             if (r.content && r.content.trim()) {
-              console.log(`Found negative review (${ratingNum}): "${r.content.substring(0, 50)}..."`);
               negativeReviews.push(r.content);
             }
           }
