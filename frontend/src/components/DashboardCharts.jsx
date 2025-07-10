@@ -128,8 +128,7 @@ function getPieProblemsData(data, categoria) {
       try {
         reviewsList = JSON.parse(item.reviews);
       } catch (e) {
-        console.error("Failed to parse reviews string:", item.reviews, e);
-        reviewsList = []; // Treat as empty if parsing fails
+        // Not valid JSON, so we ignore it.
       }
     } else if (Array.isArray(item.reviews)) {
       reviewsList = item.reviews;
@@ -140,7 +139,7 @@ function getPieProblemsData(data, categoria) {
         const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
         const ratingNum = ratingMatch ? parseFloat(ratingMatch[1]) : NaN;
 
-        if (!isNaN(ratingNum) && ratingNum <= 3.8) {
+        if (!isNaN(ratingNum) && ratingNum <= 4.0) {
           if (r.content && r.content.trim()) {
             negativeReviews.push(r.content);
           }
