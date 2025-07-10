@@ -124,10 +124,14 @@ function getPieProblemsData(data, categoria) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
     if (Array.isArray(item.reviews)) {
       for (const r of item.reviews) {
-        // rating puede ser string o número, considerar 1 o 2 como negativo
-        const ratingNum = Number(r.rating);
+        // Extraer el número del string de rating, ej: "Calificación 5 de 5" -> 5
+        const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
+        const ratingNum = ratingMatch ? parseFloat(ratingMatch[1]) : NaN;
+
         if (!isNaN(ratingNum) && ratingNum <= 4.0) {
-          if (r.content && r.content.trim()) negativeReviews.push(r.content);
+          if (r.content && r.content.trim()) {
+            negativeReviews.push(r.content);
+          }
         }
       }
     }
