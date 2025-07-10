@@ -131,50 +131,122 @@ function getPieProblemsData(data, categoria) {
 
     if (typeof item.reviews === 'string' && item.reviews.length > 2) { // Check for non-empty string '[]'
       try {
-        reviewsList = JSON.parse(item.reviews);
-        console.log(`Successfully parsed reviews for ${item.title}`);
+        // Primero intentamos con JSON.parse normal
+        try {
+          reviewsList = JSON.parse(item.reviews);
+          console.log(`Successfully parsed reviews for ${item.title}`);
+        } catch (jsonError) {
+          // Si falla, puede ser por las comillas simples. Reemplazamos y volvemos a intentar
+          const fixedReviews = item.reviews
+            .replace(/'/g, '"')         // Reemplazar comillas simples por dobles
+            .replace(/([{,]\s*)(\w+):/g, '$1"$2":')  // Agregar comillas a las claves de propiedades
+            .replace(/:\s*"([^"]*)"/g, ':"$1"');    // Preservar los valores que ya están en comillas dobles
+          
+          try {
+            reviewsList = JSON.parse(fixedReviews);
+            console.log(`Successfully parsed reviews after fixing quotes for ${item.title}`);
+          } catch (fixError) {
+            // Si aún falla después de corregir comillas, intentamos evaluar como objeto literal
+            console.error(`Failed to parse fixed reviews string for ${item.title}:`, fixError);
+            try {
+              // Último recurso: convertir a array directamente
+              if (item.reviews.startsWith('[') && item.reviews.includes('rating')) {
+                reviewsList = eval(item.reviews);
+                console.log(`Successfully evaluated reviews as array for ${item.title}`);
+              }
+            } catch (evalError) {
+              console.error(`All parsing methods failed for ${item.title}`);
+            }
+          }
+        }
       } catch (e) {
-        console.error(`Failed to parse reviews string for ${item.title}:`, e);
+        console.error(`Error processing reviews for ${item.title}:`, e);
       }
     } else if (Array.isArray(item.reviews)) {
       reviewsList = item.reviews;
     }
 
-    if (reviewsList.length > 0) {
+    if (reviewsList && reviewsList.length > 0) {
+      console.log(`Processing ${reviewsList.length} reviews for ${item.title}`);
       for (const r of reviewsList) {
-        const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
-        const ratingNum = ratingMatch ? parseFloat(ratingMatch[1]) : NaN;
+        if (!r || typeof r !== 'object') {
+          console.log(`Skipping invalid review:`, r);
+          continue;
+        }
+        
+        try {
+          const ratingStr = r.rating || '';
+          const ratingMatch = String(ratingStr).match(/(\d+(\.\d+)?)/) || String(ratingStr).match(/Calificación\s+(\d+)/) || [];
+          const ratingNum = ratingMatch[1] ? parseFloat(ratingMatch[1]) : NaN;
 
-        if (!isNaN(ratingNum) && ratingNum <= 4.0) {
-          if (r.content && r.content.trim()) {
-            negativeReviews.push(r.content);
+          console.log(`Review rating: "${ratingStr}", extracted number: ${ratingNum}`);
+
+          if (!isNaN(ratingNum) && ratingNum <= 4.0) {
+            if (r.content && r.content.trim()) {
+              console.log(`Found negative review (${ratingNum}): "${r.content.substring(0, 50)}..."`);
+              negativeReviews.push(r.content);
+            }
           }
+        } catch (reviewError) {
+          console.error(`Error processing review:`, reviewError, r);
         }
       }
     }
   }
 
   console.log("--- Finished processing all items ---");
-  console.log("Total negative reviews found:", negativeReviews);
+  console.log("Total negative reviews found:", negativeReviews.length);
 
   // Si no hay reseñas negativas, mostrar "Sin problemas reportados"
-  if (negativeReviews.length === 0) {
+  if (!negativeReviews || negativeReviews.length === 0) {
+    console.log("No negative reviews found, showing default message");
     return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
   }
+  
   const categories = {};
-  for (const review of negativeReviews) {
-    let found = false;
-    const reviewLower = review.toLowerCase();
-    for (const [cat, keywords] of Object.entries(problemCategories)) {
-      if (keywords.some(k => reviewLower.includes(k))) {
-        categories[cat] = (categories[cat] || 0) + 1;
-        found = true;
-      }
-    }
-    if (!found) categories['Otros'] = (categories['Otros'] || 0) + 1;
+  
+  // Asegurarnos de que todas las categorías estén inicializadas con cero
+  for (const cat in problemCategories) {
+    categories[cat] = 0;
   }
-  console.log("Categorized problems:", categories);
-  return { pieLabelsProblems: Object.keys(categories), pieDataProblems: Object.values(categories) };
+  categories['Otros'] = 0;
+  
+  // Analizar cada reseña
+  for (const review of negativeReviews) {
+    try {
+      let found = false;
+      const reviewLower = String(review).toLowerCase();
+      
+      for (const [cat, keywords] of Object.entries(problemCategories)) {
+        if (keywords.some(k => reviewLower.includes(k))) {
+          categories[cat] = (categories[cat] || 0) + 1;
+          found = true;
+          // Podemos romper después de encontrar la primera categoría o continuar para contar múltiples categorías
+          // break; 
+        }
+      }
+      
+      if (!found) categories['Otros'] = (categories['Otros'] || 0) + 1;
+    } catch (e) {
+      console.error("Error processing review text:", e);
+    }
+  }
+  
+  // Filtramos categorías con valor 0
+  const filteredCategories = Object.fromEntries(
+    Object.entries(categories).filter(([_, count]) => count > 0)
+  );
+  console.log("Categorized problems:", filteredCategories);
+  
+  // Si después de filtrar no tenemos categorías con valores positivos, mostrar mensaje por defecto
+  if (Object.keys(filteredCategories).length === 0) {
+    return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
+  }
+  
+  return { 
+    pieLabelsProblems: Object.keys(filteredCategories), 
+    pieDataProblems: Object.values(filteredCategories) 
+  };
 }
 
 function getVentasPorCategoriaYRating(data) {
