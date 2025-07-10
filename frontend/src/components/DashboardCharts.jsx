@@ -123,24 +123,12 @@ function getPieProblemsData(data, categoria) {
   for (const item of data) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
 
-    let reviewsList = [];
-    if (typeof item.reviews === 'string') {
-      try {
-        reviewsList = JSON.parse(item.reviews);
-      } catch (e) {
-        // Not valid JSON, so we ignore it.
-      }
-    } else if (Array.isArray(item.reviews)) {
-      reviewsList = item.reviews;
-    }
+    const reviewsList = Array.isArray(item.reviews) ? item.reviews : [];
 
     if (reviewsList.length > 0) {
-      console.log("Parsed reviews list:", reviewsList); // Log para ver la lista parseada
       for (const r of reviewsList) {
         const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
         const ratingNum = ratingMatch ? parseFloat(ratingMatch[1]) : NaN;
-        
-        console.log(`Processing rating: '${r.rating}' -> Extracted number: ${ratingNum}`); // Log para cada rating
 
         if (!isNaN(ratingNum) && ratingNum <= 4.0) {
           if (r.content && r.content.trim()) {
