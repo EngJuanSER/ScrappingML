@@ -120,21 +120,16 @@ function getPieProblemsData(data, categoria) {
     'Atención': ['atención', 'vendedor', 'servicio', 'respuesta']
   };
   let negativeReviews = [];
-  console.log("--- Starting getPieProblemsData ---");
 
   for (const item of data) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
 
     let reviewsList = [];
-    // Log the raw reviews data for each item
-    console.log(`Item: ${item.title}, Raw reviews type: ${typeof item.reviews}, Raw reviews content:`, item.reviews);
-
     if (typeof item.reviews === 'string' && item.reviews.length > 2) { // Check for non-empty string '[]'
       try {
         // Primero intentamos con JSON.parse normal
         try {
           reviewsList = JSON.parse(item.reviews);
-          console.log(`Successfully parsed reviews for ${item.title}`);
         } catch (jsonError) {
           // Si falla, puede ser por las comillas simples. Reemplazamos y volvemos a intentar
           const fixedReviews = item.reviews
@@ -144,15 +139,12 @@ function getPieProblemsData(data, categoria) {
           
           try {
             reviewsList = JSON.parse(fixedReviews);
-            console.log(`Successfully parsed reviews after fixing quotes for ${item.title}`);
           } catch (fixError) {
             // Si aún falla después de corregir comillas, intentamos evaluar como objeto literal
-            console.error(`Failed to parse fixed reviews string for ${item.title}:`, fixError);
             try {
               // Último recurso: convertir a array directamente
               if (item.reviews.startsWith('[') && item.reviews.includes('rating')) {
                 reviewsList = eval(item.reviews);
-                console.log(`Successfully evaluated reviews as array for ${item.title}`);
               }
             } catch (evalError) {
               console.error(`All parsing methods failed for ${item.title}`);
@@ -167,10 +159,8 @@ function getPieProblemsData(data, categoria) {
     }
 
     if (reviewsList && reviewsList.length > 0) {
-      console.log(`Processing ${reviewsList.length} reviews for ${item.title}`);
       for (const r of reviewsList) {
         if (!r || typeof r !== 'object') {
-          console.log(`Skipping invalid review:`, r);
           continue;
         }
         
@@ -179,7 +169,6 @@ function getPieProblemsData(data, categoria) {
           const ratingMatch = String(ratingStr).match(/(\d+(\.\d+)?)/) || String(ratingStr).match(/Calificación\s+(\d+)/) || [];
           const ratingNum = ratingMatch[1] ? parseFloat(ratingMatch[1]) : NaN;
 
-          console.log(`Review rating: "${ratingStr}", extracted number: ${ratingNum}`);
 
           if (!isNaN(ratingNum) && ratingNum <= 4.0) {
             if (r.content && r.content.trim()) {
@@ -194,12 +183,9 @@ function getPieProblemsData(data, categoria) {
     }
   }
 
-  console.log("--- Finished processing all items ---");
-  console.log("Total negative reviews found:", negativeReviews.length);
 
   // Si no hay reseñas negativas, mostrar "Sin problemas reportados"
   if (!negativeReviews || negativeReviews.length === 0) {
-    console.log("No negative reviews found, showing default message");
     return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
   }
   
@@ -236,7 +222,6 @@ function getPieProblemsData(data, categoria) {
   const filteredCategories = Object.fromEntries(
     Object.entries(categories).filter(([_, count]) => count > 0)
   );
-  console.log("Categorized problems:", filteredCategories);
   
   // Si después de filtrar no tenemos categorías con valores positivos, mostrar mensaje por defecto
   if (Object.keys(filteredCategories).length === 0) {
