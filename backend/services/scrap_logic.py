@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 from sqlalchemy import create_engine, text
-import json
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 db_url = os.getenv("DATABASE_URL")
@@ -139,7 +138,7 @@ def run_scrap_and_save(query, num_pages, progress_ref=None):
                     "total_ratings": total_ratings,
                     "comments_count": comments_count,
                     "summary": summary_text,
-                    "reviews": json.dumps(reviews, ensure_ascii=False),
+                    "reviews": str(reviews),
                     "page": page_num,
                     "search_term": query,
                     "categoria": categoria
