@@ -126,23 +126,7 @@ function getPieProblemsData(data, categoria) {
     let reviewsList = [];
     if (typeof item.reviews === 'string') {
       try {
-        // The reviews are stored as a string representation of a Python list.
-        // This is a more robust way to convert it to valid JSON.
-        let correctedString = item.reviews
-          // Replace Python's None, True, False with JSON's null, true, false
-          .replace(/None/g, 'null')
-          .replace(/True/g, 'true')
-          .replace(/False/g, 'false')
-          // Replace single quotes for keys and string values with double quotes
-          .replace(/'/g, '"');
-        
-        // Fix unescaped double quotes inside the 'content' field
-        correctedString = correctedString.replace(/("content":\s*)"(.*?)"(\s*[,}])/g, (match, p1, p2, p3) => {
-            const escapedContent = p2.replace(/"/g, '\\"');
-            return `${p1}"${escapedContent}"${p3}`;
-        });
-
-        reviewsList = JSON.parse(correctedString);
+        reviewsList = JSON.parse(item.reviews);
       } catch (e) {
         console.error("Failed to parse reviews string:", item.reviews, e);
         reviewsList = []; // Treat as empty if parsing fails
