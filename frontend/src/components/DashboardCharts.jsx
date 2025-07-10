@@ -122,7 +122,8 @@ function getPieProblemsData(data, categoria) {
   let negativeReviews = [];
   for (const item of data) {
     if (categoria !== 'todas' && item.categoria !== categoria) continue;
-    if (Array.isArray(item.reviews)) {
+      if (Array.isArray(item.reviews) && item.reviews.length > 0) {
+        console.log('Processing reviews for item:', item.title, item.reviews);
       for (const r of item.reviews) {
         // Extraer el número del string de rating, ej: "Calificación 5 de 5" -> 5
         const ratingMatch = r.rating ? String(r.rating).match(/(\d+(\.\d+)?)/) : null;
@@ -136,6 +137,7 @@ function getPieProblemsData(data, categoria) {
       }
     }
   }
+  console.log('All negative reviews found:', negativeReviews);
   // Si no hay reseñas negativas, mostrar "Sin problemas reportados"
   if (negativeReviews.length === 0) {
     return { pieLabelsProblems: ['Sin problemas reportados'], pieDataProblems: [1] };
